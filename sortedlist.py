@@ -16,9 +16,9 @@ class SortedList(list):
             midval = self.__getitem__(midpt)
             if startpt == midpt and midval != val:
                 break
-            if val < midpt:
+            if val < midval:
                 endpt = midpt - 1
-            elif val > midpt:
+            elif val > midval:
                 startpt = midpt + 1
             else:
                 return midpt
