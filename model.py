@@ -51,23 +51,18 @@ def build_fit_rmi_model(dataset, stages=(1,3,4), n_layers=2, n_neurons=32, n_epo
             next_stage_size = 1 if i + 1 == len(stages) else stages[i + 1]
             nn = new_stage_model(next_stage_size=1, n_layers=n_layers, n_neurons=n_neurons, initializer=initializer, **kwargs)
             if len(tmp_records[i][j]) > 0:
+                if i > 0:
+                    nn.load_weights('rootmodel.tf')
                 nn.fit(tmp_records[i][j], epochs=n_epochs, verbose=verbose)#0)
+                if i == 0:
+                    nn.save_weights("rootmodel.tf")
             if len(index) <= i:
                 index.append([])
             index[i].append(nn)
             if i < M - 1:
-#                 xsub = [[] for _ in range(next_stage_size)]
-#                 ysub = [[] for _ in range(next_stage_size)]
                 tmp_records.append([])
                 pred = index[i][j].predict(tmp_records[i][j]).reshape(-1) / maxind * next_stage_size
                 pred = pred.astype(int)
-#                 print(pred)
-#                 for r in tmp_records[i][j]:
-#                     rx, ry = r
-#                     pred = int(index[i][j].predict(rx)[0] / maxind * next_stage_size)
-#                     pred = max(min(pred, next_stage_size-1), 0)
-#                     xsub[pred].append(rx)
-#                     ysub[pred].append(ry)
                 for p in range(next_stage_size):
                     tmp = np.array(list(tmp_records[i][j].as_numpy_iterator())).reshape(-1,2,1)[pred==p]
                     subset = tf.data.Dataset.from_tensor_slices((tmp[:,0], tmp[:,1]))
@@ -76,16 +71,41 @@ def build_fit_rmi_model(dataset, stages=(1,3,4), n_layers=2, n_neurons=32, n_epo
     # TODO: Handle error_threshold w/ B-Trees n shiet
     return index
 
-def predict_rmi_model(rmi, inputs, maxind=None):
+def predict_rmi_model(rmi, inputs, maxind=None, with_leaf=False):
     assert len(rmi[0]) == 1, "First stage of model must be size-1"
     if maxind is None:
         maxind = len(inputs)
     M = len(rmi)
-    j = 0
+    j = [0] * len(inputs)
+    leaf_idx = 0
+    nns = []
     for i in range(M):
         next_stage_size = 1 if i + 1 == len(rmi) else len(rmi[i + 1])
-        nn = rmi[i][j]
-        pred = int(nn.predict(inputs)[0] / maxind * next_stage_size)
-        pred = max(min(pred, next_stage_size-1), 0)
+        uniqj = np.unique(j)
+        nns = [rmi[i][uniqj[k]] for k in range(len(uniqj))]
+        # pred = [(nns[uniqj[k]].predict(inputs[j==uniqj[k]]) / maxind * next_stage_size).astype(int) for k in range(len(uniqj))]
+        # (nn.predict(inputs).reshape(-1) / maxind * next_stage_size).astype(int)
+        pred = {}
+        for uj in uniqj:
+            pred[uj] = (nns[uj].predict(inputs[j==uj]).reshape(-1) / maxind * next_stage_size).astype(int)
+        pred = np.concatenate(list(pred.values()))
+        # print(pred)
+        # pred = np.array(pred).reshape(1,-1)
+        if i == M - 1:
+            leaf_idx = np.array(j).reshape(-1)
+            pred = {}
+            for uj in uniqj:
+                pred[uj] = (nns[uj].predict(inputs[j==uj]).reshape(-1))
+            pred = np.concatenate(list(pred.values()))
+        else:
+            pred = [min(max(p, 0), next_stage_size-1) for p in pred]
         j = pred
-    return nn.predict(inputs)
+    # pred = [(nns[uniqj[k]].predict(inputs[j==uniqj[k]]) / maxind * next_stage_size).astype(int) for k in range(len(uniqj))]
+#     pred = {}
+#     for uj in np.unique(leaf_idx):
+#         pred[uj] = (nns[uj].predict(inputs[j==uj]).reshape(-1)).astype(int)
+#     pred = np.concatenate(list(pred.values()))
+    # print(pred)
+    if with_leaf:
+        return pred, leaf_idx
+    return pred
