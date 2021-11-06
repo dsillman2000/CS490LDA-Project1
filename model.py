@@ -50,12 +50,17 @@ def build_fit_rmi_model(dataset, stages=(1,3,4), n_layers=2, n_neurons=32, n_epo
         for j in range(stages[i]):
             next_stage_size = 1 if i + 1 == len(stages) else stages[i + 1]
             nn = new_stage_model(next_stage_size=1, n_layers=n_layers, n_neurons=n_neurons, initializer=initializer, **kwargs)
-            if len(tmp_records[i][j]) > 0:
-                if i > 0:
-                    nn.load_weights('rootmodel.tf')
-                nn.fit(tmp_records[i][j], epochs=n_epochs, verbose=verbose)#0)
-                if i == 0:
-                    nn.save_weights("rootmodel.tf")
+            try:
+                if len(tmp_records[i][j]) > 0:
+                    if i > 0:
+                        nn.load_weights('rootmodel.tf')
+                    nn.fit(tmp_records[i][j], epochs=n_epochs, verbose=verbose)#0)
+                    if i == 0:
+                        nn.save_weights("rootmodel.tf")
+            except IndexError:
+                continue
+            if len(tmp_records[i][j]) == 0:
+                continue
             if len(index) <= i:
                 index.append([])
             index[i].append(nn)
@@ -63,8 +68,13 @@ def build_fit_rmi_model(dataset, stages=(1,3,4), n_layers=2, n_neurons=32, n_epo
                 tmp_records.append([])
                 pred = index[i][j].predict(tmp_records[i][j]).reshape(-1) / maxind * next_stage_size
                 pred = pred.astype(int)
+                print(f"pred = {pred}")
+                pred[pred < 0] = 0
+                pred[pred >= next_stage_size] = next_stage_size-1
                 for p in range(next_stage_size):
                     tmp = np.array(list(tmp_records[i][j].as_numpy_iterator())).reshape(-1,2,1)[pred==p]
+                    if len(tmp) == 0:
+                        continue
                     subset = tf.data.Dataset.from_tensor_slices((tmp[:,0], tmp[:,1]))
                     if verbose: print(f"[i={i},j={j},p={p}]len(subset)={len(subset)}")
                     tmp_records[-1].append(subset)
