@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
-
+import tqdm
 
 class MaxAbsoluteError(keras.metrics.Metric):
     def __init__(self, name='max_absolute_error', **kwargs):
@@ -46,15 +46,18 @@ def build_fit_rmi_model(dataset, stages=(1,3,4), n_layers=2, n_neurons=32, n_epo
     M = len(stages)
     tmp_records = [[dataset]]
     index = [[]]
-    for i in range(M):
+    progress = tqdm.tqdm(range(M))
+    for i in progress:
         for j in range(stages[i]):
+            # progress.set_description(f"Training Stage {i}... Model {j}")
             next_stage_size = 1 if i + 1 == len(stages) else stages[i + 1]
             nn = new_stage_model(next_stage_size=1, n_layers=n_layers, n_neurons=n_neurons, initializer=initializer, **kwargs)
             try:
                 if len(tmp_records[i][j]) > 0:
                     if i > 0:
                         nn.load_weights('rootmodel.tf')
-                    nn.fit(tmp_records[i][j], epochs=n_epochs, verbose=verbose)#0)
+                    hist = nn.fit(tmp_records[i][j], epochs=n_epochs, verbose=verbose)#0)
+                    progress.set_description(f"Training Stage {i+1}... Model {j+1}... MaxAE {hist.history.get('max_absolute_error', [0.0])[-1]}")
                     if i == 0:
                         nn.save_weights("rootmodel.tf")
             except IndexError:
@@ -66,13 +69,15 @@ def build_fit_rmi_model(dataset, stages=(1,3,4), n_layers=2, n_neurons=32, n_epo
             index[i].append(nn)
             if i < M - 1:
                 tmp_records.append([])
+                # maxind = len(tmp_records[i][j])
                 pred = index[i][j].predict(tmp_records[i][j]).reshape(-1) / maxind * next_stage_size
                 pred = pred.astype(int)
-                print(f"pred = {pred}")
+                # print(f"pred = {pred}")
                 pred[pred < 0] = 0
                 pred[pred >= next_stage_size] = next_stage_size-1
                 for p in range(next_stage_size):
                     tmp = np.array(list(tmp_records[i][j].as_numpy_iterator())).reshape(-1,2,1)[pred==p]
+                    # print(f"tmp={tmp}")
                     if len(tmp) == 0:
                         continue
                     subset = tf.data.Dataset.from_tensor_slices((tmp[:,0], tmp[:,1]))
@@ -96,16 +101,16 @@ def predict_rmi_model(rmi, inputs, maxind=None, with_leaf=False):
         # pred = [(nns[uniqj[k]].predict(inputs[j==uniqj[k]]) / maxind * next_stage_size).astype(int) for k in range(len(uniqj))]
         # (nn.predict(inputs).reshape(-1) / maxind * next_stage_size).astype(int)
         pred = {}
-        for uj in uniqj:
-            pred[uj] = (nns[uj].predict(inputs[j==uj]).reshape(-1) / maxind * next_stage_size).astype(int)
+        for uj in range(len(uniqj)):
+            pred[uniqj[uj]] = (nns[uj].predict(inputs[j==uniqj[uj]]).reshape(-1) / maxind * next_stage_size).astype(int)
         pred = np.concatenate(list(pred.values()))
         # print(pred)
         # pred = np.array(pred).reshape(1,-1)
         if i == M - 1:
             leaf_idx = np.array(j).reshape(-1)
             pred = {}
-            for uj in uniqj:
-                pred[uj] = (nns[uj].predict(inputs[j==uj]).reshape(-1))
+            for uj in range(len(uniqj)):
+                pred[uniqj[uj]] = (nns[uj].predict(inputs[j==uniqj[uj]]).reshape(-1))
             pred = np.concatenate(list(pred.values()))
         else:
             pred = [min(max(p, 0), next_stage_size-1) for p in pred]
