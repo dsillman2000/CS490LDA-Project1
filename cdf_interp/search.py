@@ -1,4 +1,4 @@
-from bisect import bisect_left
+from refbisect import bisect_left
 
 def pinch_predict(data, prediction_func):
 
@@ -13,7 +13,7 @@ def pinch_predict(data, prediction_func):
     return inner
 
 def informed_bsearch(data, prediction_func):
-    
+
     def inner(x):
         yhat = prediction_func(x)
         if yhat < 0:
@@ -23,23 +23,25 @@ def informed_bsearch(data, prediction_func):
         xhat = data[yhat]
 
         if xhat > x:
-            yhat = bisect_left(data, x, 0, yhat)
+            yhat, refs = bisect_left(data, x, 0, yhat)
         elif yhat < x:
-            yhat = bisect_left(data, x, yhat, len(data))
+            yhat, refs = bisect_left(data, x, yhat, len(data))
             if yhat >= len(data):
-                return -1
-        return yhat if data[yhat] == x else -1
-    
+                return -1, refs
+        return yhat if data[yhat] == x else -1, refs
     return inner
 
 def exponential_search(data, prediction_func):
 
     def inner(x):
         ly = yhat = ry = prediction_func(x)
+        
+        references = 0
 
         if data[yhat] > x:
             i = 1
             while ly > 0 and data[ly] > x:
+                references += 1
                 ly = yhat - i
                 i *= 2
             if ly < 0:
@@ -47,11 +49,12 @@ def exponential_search(data, prediction_func):
         elif data[yhat] < x:
             i = 1
             while ry < len(data) and data[ry] < x:
+                references += 1
                 ry = yhat + i
                 i *= 2
             if ry >= len(data):
                 ry = len(data) - 1
-        yhat = bisect_left(data, x, ly, ry)
-        return yhat if data[yhat] == x else -1
+        yhat, refs = bisect_left(data, x, ly, ry)
+        return yhat if data[yhat] == x else -1, references + refs + 1
     
     return inner
