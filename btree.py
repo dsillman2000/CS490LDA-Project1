@@ -173,7 +173,7 @@ class BTree(object):
             if index < len(current.contents) \
                     and current.contents[index] == item:
                 references += 1
-                return ancestry, references
+                return references
             current = current.children[index]
 
         index, refs = bisect_left(current.contents, item)
