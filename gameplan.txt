@@ -1,0 +1,27 @@
+### Experiments ###
+
+We build 5 RMI models that are tailored to different levels of complexity:
+    Alpha : [1, 16], 0 Layers, 5 Epochs
+    Beta : [1, 256], 0 Layers, 5 Epochs
+    Gamma : [1, 256], 2 Layers, 5 Epochs
+    Delta : [1, 256], 2 Layers, 5 Epochs
+    Zeta : [1, 32768], 0 Layers, 5 Epochs
+
+Each experiment is a given dataset. With each dataset, we evaluate:
+    a. RMI & BTree Building Time (seconds)
+    b. RMI & BTree Prediction Time (seconds)
+    c. RMI & BTree Model Space (kB)
+
+Exp. no 1 : Bi-modal normal distribution (60k)
+
+Exp. no 2 : Mac OSX Log distribution (117k)
+
+Exp. no 3 : Something else. Ideas ?
+
+Each Model gets its own ipynb. Format:
+* Model Diagram Section
+* Exp [i]
+    * Data Distribution Section
+    * RMI Build Timeit vs BTree Build Timeit
+    * RMI Search Timeit vs BTree Search Timeit
+    * RMI Storage Space vs BTree Storage Space
