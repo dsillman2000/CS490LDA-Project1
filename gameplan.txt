@@ -16,12 +16,10 @@ Exp. no 1 : Bi-modal normal distribution (60k)
 
 Exp. no 2 : Mac OSX Log distribution (117k)
 
-Exp. no 3 : Something else. Ideas ?
-
 Each Model gets its own ipynb. Format:
 * Model Diagram Section
 * Exp [i]
     * Data Distribution Section
     * RMI Build Timeit vs BTree Build Timeit
-    * RMI Search Timeit vs BTree Search Timeit
-    * RMI Storage Space vs BTree Storage Space
+    * RMI Query Timeit vs BTree Query Timeit
+    * RMI Query Array Accesses vs BTree Query Array Accesses
