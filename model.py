@@ -54,14 +54,6 @@ def new_stage_model(next_stage_size=1, n_layers=2, n_neurons=32, initializer='id
     stage_model.compile(**kwargs)
     return stage_model
     
-def zero_model(y, **kwargs):
-    inp = keras.Input(shape=(1,1))
-    x = inp
-    outp = keras.layers.Dense(1, kernel_initializer='zeros', bias_initializer=keras.initializers.Constant(y), trainable=False)(x)
-    model = keras.Model(inp, outp)
-    model.compile(**kwargs)
-    return model
-    
 def build_fit_rmi_model(dataset, stages=(1,3,4), n_layers=2, n_neurons=32, n_epochs=10, verbose='auto', initializer='identity', **kwargs):
     """
     Generates and fits the component stage models to their corresponding subsets of
@@ -79,17 +71,11 @@ def build_fit_rmi_model(dataset, stages=(1,3,4), n_layers=2, n_neurons=32, n_epo
         if i < M - 1:
                 tmp_records.append([[] for _ in range(next_stage_size)])
         for j in range(stages[i]):
-            if len(tmp_records[i][j][0]) == 0:
-                true_y = tmp_records[i][j-1][1][-1]
-                nn = zero_model(true_y)
-            elif len(tmp_records[i][j][0]) <= 5:
-                true_y = np.mean(tmp_records[i][j][1])
-                nn = zero_model(true_y)
-            else :
+            if len(tmp_records[i][j][0]) > 0:
                 basicargs = {"next_stage_size":1, "n_layers":n_layers, "n_neurons": n_neurons, "initializer":initializer}
                 nn = new_stage_model(**basicargs, **kwargs)
-#                 if i > 0:
-#                     nn.load_weights('rootmodel.tf')
+    #                 if i > 0:
+    #                     nn.load_weights('rootmodel.tf')
                 if len(tmp_records[i][j][0]) % BATCHSIZE != 0:
                     tmp_records[i][j] = np.array(tmp_records[i][j]).reshape(2,-1,1)
                     nextup = (len(tmp_records[i][j][0])//BATCHSIZE + 1) * BATCHSIZE
@@ -101,23 +87,23 @@ def build_fit_rmi_model(dataset, stages=(1,3,4), n_layers=2, n_neurons=32, n_epo
                     nn.save_weights("rootmodel.tf")
                     with open("submodel.arch", "wb") as f:
                         pickle.dump(basicargs, f)
-            if len(index) <= i:
-                index.append([])
-            index[i].append(nn)
-            if i < M - 1:
-                pred = index[i][j].predict(tmp_records[i][j][0], batch_size=BATCHSIZE).reshape(-1) / maxind * next_stage_size
-                pred = pred.astype(int)
-                pred[pred < 0] = 0
-                pred[pred >= next_stage_size] = next_stage_size-1
-                tmp_all = tmp_records[i][j]
-                for p in range(next_stage_size):
-                    tmp = tmp_all[:,pred==p,:]
-                    if len(tmp) == 0:
-                        continue
-                    subset = tmp.reshape(2,-1,1)
-                    if verbose: 
-                        print(f"[i={i},j={j},p={p}]len(subset)={subset.shape}")
-                    tmp_records[-1][p].append(subset)
+                if len(index) <= i:
+                    index.append([])
+                index[i].append(nn)
+                if i < M - 1:
+                    pred = index[i][j].predict(tmp_records[i][j][0], batch_size=BATCHSIZE).reshape(-1) / maxind * next_stage_size
+                    pred = pred.astype(int)
+                    pred[pred < 0] = 0
+                    pred[pred >= next_stage_size] = next_stage_size-1
+                    tmp_all = tmp_records[i][j]
+                    for p in range(next_stage_size):
+                        tmp = tmp_all[:,pred==p,:]
+                        if len(tmp) == 0:
+                            continue
+                        subset = tmp.reshape(2,-1,1)
+                        if verbose: 
+                            print(f"[i={i},j={j},p={p}]len(subset)={subset.shape}")
+                        tmp_records[-1][p].append(subset)
         # Join subsets within each bucket
         for p in range(next_stage_size):
             if not type(tmp_records[-1][p]) == list:

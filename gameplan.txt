@@ -3,7 +3,6 @@
 We build 5 RMI models that are tailored to different levels of complexity:
     Alpha : [1, 16], 0 Layers, 5 Epochs
     Beta : [1, 256], 0 Layers, 5 Epochs
-    Gamma : [1, 256], 2 Layers, 5 Epochs
     Delta : [1, 256], 2 Layers, 5 Epochs
     Zeta : [1, 32768], 0 Layers, 5 Epochs
 
