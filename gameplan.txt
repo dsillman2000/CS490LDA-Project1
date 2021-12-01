@@ -5,7 +5,7 @@ We build 5 RMI models that are tailored to different levels of complexity:
     Beta : [1, 256], 0 Layers, 5 Epochs
     Gamma : [1, 16], 2 Layers, 5 Epochs
     Delta : [1, 256], 2 Layers, 5 Epochs
-    Zeta : [1, 32768], 0 Layers, 5 Epochs
+    Zeta : [1, 1024], 0 Layers, 5 Epochs
 
 Each experiment is a given dataset. With each dataset, we evaluate:
     a. RMI & BTree Building Time (seconds)
