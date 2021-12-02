@@ -34,7 +34,7 @@ def informed_bsearch(data, prediction_func):
 def exponential_search(data, prediction_func):
 
     def inner(x):
-        ly = yhat = ry = prediction_func(x)
+        ly = yhat = ry = int(prediction_func(x))
         
         references = 0
 
